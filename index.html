@@ -9,8 +9,8 @@
         @import url('https://fonts.googleapis.com/css2?family=Changa:wght@400;700&display=swap');
         body {
             font-family: 'Changa', sans-serif;
-            background-color: #fdfaf6;
             color: #4a4a4a;
+            background-image: url(images/cover.png);
         }
         .chessboard {
             display: grid;
@@ -41,13 +41,16 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-            transition: transform 150ms ease;
+            transition: transform 150ms ease, filter 150ms ease;
         }
         .square img:hover {
             transform: scale(1.05);
         }
         .selected {
             background-color: #6a994e !important;
+        }
+        .in-check {
+            background-color: #ef4444 !important; /* Red for check */
         }
         .valid-move::after {
             content: '';
@@ -100,7 +103,6 @@
         .modal-content button:hover {
             background-color: #6a994e;
         }
-        /* Style for disabled button */
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
@@ -109,11 +111,10 @@
 </head>
 <body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
 
-    <!-- Start Modal -->
     <div id="startModal" class="modal-overlay">
         <div class="modal-content">
             <h2 class="text-3xl font-bold">Welcome to Choufli Hal Chess!</h2>
-            <p class="my-4">Click the button to start the game and the music.</p>
+            <p class="my-4">Click the button to start the game</p>
             <button id="startGameButton" class="text-xl">Start Game</button>
         </div>
     </div>
@@ -124,7 +125,7 @@
 
     <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 text-[#8b5e34]">♟️ Choufli Hal Chess ♟️</h1>
 
-    <div id="game-info" class="game-info mb-4">White's Turn (Slimane's Team)</div>
+    <div id="game-info" class="game-info mb-4">White's Turn</div>
 
     <div class="chessboard" id="board"></div>
     
@@ -156,17 +157,8 @@
     const musicToggleButton = document.getElementById("musicToggleButton");
     const backgroundMusic = document.getElementById("backgroundMusic");
 
-    // Completed the image list to include black pieces
     const images = {
-        Slimane: "images/slimane.jpg", Zeineb: "images/zaineb.jpg",
-        Janet: "images/janet.jpg", "Béji Matrix": "images/beji.jpg",
-        Fadhila: "images/fadhila.png", Douja: "images/douja.jpg",
-        Sboui: "images/sbou3i.jpeg", Fouchika: "images/fouchika.jpg",
-        Azza: "images/azza.png", Amani: "images/amani.jpg",
-        Fatma: "images/fatma.jpg", Dalenda: "images/dalenda.jpeg",
-        Kalthoum: "images/kalthoum.jpg", Chabrouch: "images/chabrouch.png",
-        Taïeb: "images/taieb.jpeg", Houssi: "images/houssi.jpg",
-        
+        Slimane: "images/slimane.jpg", Zeineb: "images/zaineb.jpg", Janet: "images/janet.jpg", "Béji Matrix": "images/beji.jpg", Fadhila: "images/fadhila.png", Douja: "images/douja.jpg", Sboui: "images/sbou3i.jpeg", Fouchika: "images/fouchika.jpg", Azza: "images/azza.png", Amani: "images/amani.jpg", Fatma: "images/fatma.jpg", Dalenda: "images/dalenda.jpeg", Kalthoum: "images/kalthoum.jpg", Chabrouch: "images/chabrouch.png", Taïeb: "images/taieb.jpeg", Houssi: "images/houssi.jpg",
     };
 
     const PIECE_TYPES = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight', P: 'pawn' };
@@ -176,7 +168,9 @@
     let selectedPiece = null;
     let currentPlayer = TEAMS.W;
     let validMoves = [];
-    let moveHistory = []; // For the undo feature
+    let moveHistory = [];
+    let enPassantTarget = null; // For en passant
+    let isGameOver = false;
 
     // --- MUSIC CONTROL ---
     function startMusic() {
@@ -206,10 +200,12 @@
                 if (!pieceCode) return null;
                 const team = pieceCode.charAt(0) === 'w' ? TEAMS.W : TEAMS.B;
                 const type = PIECE_TYPES[pieceCode.charAt(1)];
-                return { team, type, name: getPieceName(team, type, r, c), row: r, col: c };
+                return { team, type, name: getPieceName(team, type, r, c), row: r, col: c, hasMoved: false };
             })
         );
         moveHistory = [];
+        enPassantTarget = null;
+        isGameOver = false;
         updateUndoButton();
     }
 
@@ -230,6 +226,9 @@
     // --- VIEW: RENDERING THE BOARD ---
     function renderBoard() {
         boardElement.innerHTML = "";
+        const king = findKing(currentPlayer);
+        const kingInCheck = king ? isSquareAttacked(king.row, king.col, getOpponent(currentPlayer)) : false;
+
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 const square = document.createElement("div");
@@ -240,6 +239,9 @@
 
                 const piece = boardState[row][col];
                 if (piece) {
+                    if (piece.type === 'king' && piece.team === currentPlayer && kingInCheck) {
+                        square.classList.add('in-check');
+                    }
                     const img = document.createElement("img");
                     img.src = images[piece.name] || "images/placeholder.png";
                     img.alt = `${piece.team} ${piece.type}`;
@@ -257,7 +259,9 @@
     }
     
     function updateHighlights() {
-        document.querySelectorAll('.square').forEach(s => s.classList.remove('selected', 'valid-move', 'capture-move'));
+        document.querySelectorAll('.square.selected').forEach(s => s.classList.remove('selected'));
+        document.querySelectorAll('.valid-move').forEach(s => s.classList.remove('valid-move', 'capture-move'));
+
         if (selectedPiece) {
             const square = document.querySelector(`[data-row='${selectedPiece.row}'][data-col='${selectedPiece.col}']`);
             if (square) square.classList.add('selected');
@@ -266,17 +270,18 @@
             const square = document.querySelector(`[data-row='${move.row}'][data-col='${move.col}']`);
             if (square) {
                 square.classList.add('valid-move');
-                if (boardState[move.row][move.col]) square.classList.add('capture-move');
+                if (boardState[move.row][move.col] || (move.isEnPassant)) square.classList.add('capture-move');
             }
         });
     }
 
     function updateUndoButton() {
-        undoButton.disabled = moveHistory.length === 0;
+        undoButton.disabled = moveHistory.length === 0 || isGameOver;
     }
 
     // --- CONTROLLER: HANDLING USER INPUT ---
     boardElement.addEventListener("click", (event) => {
+        if (isGameOver) return;
         const square = event.target.closest(".square");
         if (!square) return;
 
@@ -285,9 +290,9 @@
         const piece = boardState[row][col];
 
         if (selectedPiece) {
-            const isValidMove = validMoves.some(m => m.row === row && m.col === col);
-            if (isValidMove) {
-                movePiece(selectedPiece, { row, col });
+            const move = validMoves.find(m => m.row === row && m.col === col);
+            if (move) {
+                movePiece(selectedPiece, move);
             } else {
                 deselectPiece();
                 if (piece && piece.team === currentPlayer) selectPiece(piece);
@@ -299,7 +304,7 @@
 
     function selectPiece(piece) {
         selectedPiece = piece;
-        validMoves = getValidMoves(piece);
+        validMoves = getLegalMoves(piece);
         updateHighlights();
     }
 
@@ -309,19 +314,48 @@
         updateHighlights();
     }
 
-    function movePiece(piece, target) {
-        // Save current state for undo
-        moveHistory.push(JSON.parse(JSON.stringify({board: boardState, player: currentPlayer})));
+    function movePiece(piece, move) {
+        moveHistory.push({
+            board: JSON.parse(JSON.stringify(boardState)),
+            player: currentPlayer,
+            enPassant: enPassantTarget
+        });
         updateUndoButton();
-
-        // Perform move
-        if (piece.type === 'pawn' && (target.row === 0 || target.row === 7)) {
-            boardState[target.row][target.col] = { ...piece, type: 'queen', name: piece.team === 'white' ? 'Zeineb' : 'Hayet' };
-        } else {
-            boardState[target.row][target.col] = { ...piece, row: target.row, col: target.col };
-        }
-        boardState[piece.row][piece.col] = null;
         
+        const { row: fromRow, col: fromCol } = piece;
+        const { row: toRow, col: toCol } = move;
+
+        // En Passant capture
+        if (move.isEnPassant) {
+            boardState[fromRow][toCol] = null;
+        }
+        
+        // Castling
+        if (move.isCastle) {
+            const rookFromCol = toCol > fromCol ? 7 : 0;
+            const rookToCol = toCol > fromCol ? 5 : 3;
+            const rook = boardState[fromRow][rookFromCol];
+            boardState[fromRow][rookToCol] = { ...rook, col: rookToCol, hasMoved: true };
+            boardState[fromRow][rookFromCol] = null;
+        }
+
+        // Update piece position
+        boardState[toRow][toCol] = { ...piece, row: toRow, col: toCol, hasMoved: true };
+        boardState[fromRow][fromCol] = null;
+        
+        // Pawn Promotion
+        if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
+            boardState[toRow][toCol].type = 'queen';
+            boardState[toRow][toCol].name = piece.team === 'white' ? 'Zeineb' : 'Hayet';
+        }
+
+        // Set en passant target for next turn
+        if (piece.type === 'pawn' && Math.abs(toRow - fromRow) === 2) {
+            enPassantTarget = { row: (fromRow + toRow) / 2, col: fromCol };
+        } else {
+            enPassantTarget = null;
+        }
+
         switchPlayer();
         deselectPiece();
         renderBoard();
@@ -330,11 +364,11 @@
     
     function undoMove() {
         if (moveHistory.length === 0) return;
-
         const lastState = moveHistory.pop();
         boardState = lastState.board;
         currentPlayer = lastState.player;
-
+        enPassantTarget = lastState.enPassant;
+        isGameOver = false;
         deselectPiece();
         renderBoard();
         updatePlayerInfo();
@@ -342,48 +376,87 @@
     }
 
     function switchPlayer() {
-        currentPlayer = (currentPlayer === TEAMS.W) ? TEAMS.B : TEAMS.W;
+        currentPlayer = getOpponent(currentPlayer);
         updatePlayerInfo();
     }
     
     function updatePlayerInfo() {
+        if (isGameOver) return;
         const teamName = currentPlayer === TEAMS.W ? "White Team" : "Black Team";
         gameInfoElement.textContent = `${currentPlayer === TEAMS.W ? 'White' : 'Black'}'s Turn (${teamName})`;
     }
 
-    // --- GAME LOGIC: VALID MOVES & GAME STATE ---
-    function getValidMoves(piece) {
+    // --- GAME LOGIC: RULES, MOVES & GAME STATE ---
+    function getLegalMoves(piece) {
+        const pseudoLegalMoves = getPseudoLegalMoves(piece);
+        return pseudoLegalMoves.filter(move => {
+            // Simulate the move
+            const fromRow = piece.row;
+            const fromCol = piece.col;
+            const toRow = move.row;
+            const toCol = move.col;
+            const originalPiece = boardState[toRow][toCol];
+            
+            boardState[toRow][toCol] = { ...piece, row: toRow, col: toCol };
+            boardState[fromRow][fromCol] = null;
+
+            // Check if the king is safe after the move
+            const king = findKing(piece.team);
+            const isLegal = !isSquareAttacked(king.row, king.col, getOpponent(piece.team));
+
+            // Revert the move
+            boardState[fromRow][fromCol] = piece;
+            boardState[toRow][toCol] = originalPiece;
+
+            return isLegal;
+        });
+    }
+
+    function getPseudoLegalMoves(piece) {
         const moves = [];
         const { row, col, type, team } = piece;
-        const addMove = (r, c, isCaptureOnly = false) => {
-            if (r >= 0 && r < 8 && c >= 0 && c < 8) {
-                const targetPiece = boardState[r][c];
-                if (!targetPiece && !isCaptureOnly) {
-                    moves.push({ row: r, col: c });
-                    return true;
-                }
-                if (targetPiece && targetPiece.team !== team) {
-                    moves.push({ row: r, col: c });
-                }
+
+        const addMove = (r, c) => {
+            if (r < 0 || r > 7 || c < 0 || c > 7) return false;
+            const target = boardState[r][c];
+            if (!target) {
+                moves.push({ row: r, col: c });
+                return true;
+            }
+            if (target.team !== team) {
+                moves.push({ row: r, col: c });
             }
             return false;
         };
+        
         const addSlidingMoves = (directions) => {
             directions.forEach(([dr, dc]) => {
                 let r = row + dr, c = col + dc;
                 while (addMove(r, c)) { r += dr; c += dc; }
             });
         };
+
         switch (type) {
             case 'pawn':
                 const dir = team === TEAMS.W ? -1 : 1;
                 const startRow = team === TEAMS.W ? 6 : 1;
-                if (!boardState[row + dir]?.[col]) {
-                    addMove(row + dir, col);
-                    if (row === startRow && !boardState[row + 2 * dir]?.[col]) addMove(row + 2 * dir, col);
+                if (row + dir >= 0 && row + dir < 8 && !boardState[row + dir][col]) {
+                    moves.push({ row: row + dir, col: col });
+                    if (row === startRow && !boardState[row + 2 * dir][col]) {
+                        moves.push({ row: row + 2 * dir, col: col });
+                    }
                 }
-                if (boardState[row + dir]?.[col - 1]?.team !== team && boardState[row + dir]?.[col-1]) addMove(row + dir, col - 1, true);
-                if (boardState[row + dir]?.[col + 1]?.team !== team && boardState[row + dir]?.[col+1]) addMove(row + dir, col + 1, true);
+                [-1, 1].forEach(dc => {
+                    if (col + dc >= 0 && col + dc < 8 && row + dir >= 0 && row + dir < 8) {
+                        const target = boardState[row + dir][col + dc];
+                        if (target && target.team !== team) {
+                            moves.push({ row: row + dir, col: col + dc });
+                        }
+                        if (enPassantTarget && enPassantTarget.row === row + dir && enPassantTarget.col === col + dc) {
+                            moves.push({ row: row + dir, col: col + dc, isEnPassant: true });
+                        }
+                    }
+                });
                 break;
             case 'knight':
                 [[ -2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]].forEach(([dr, dc]) => addMove(row + dr, col + dc));
@@ -391,28 +464,109 @@
             case 'rook': addSlidingMoves([[-1, 0], [1, 0], [0, -1], [0, 1]]); break;
             case 'bishop': addSlidingMoves([[-1, -1], [-1, 1], [1, -1], [1, 1]]); break;
             case 'queen': addSlidingMoves([[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]); break;
-            case 'king': [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]].forEach(([dr, dc]) => addMove(row + dr, col + dc)); break;
+            case 'king':
+                [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]].forEach(([dr, dc]) => addMove(row + dr, col + dc));
+                if (!piece.hasMoved && !isSquareAttacked(row, col, getOpponent(team))) {
+                    const kingsideRook = boardState[row][7];
+                    if (kingsideRook?.type === 'rook' && !kingsideRook.hasMoved && !boardState[row][5] && !boardState[row][6] && !isSquareAttacked(row, 5, getOpponent(team)) && !isSquareAttacked(row, 6, getOpponent(team))) {
+                        moves.push({ row: row, col: 6, isCastle: true });
+                    }
+                    const queensideRook = boardState[row][0];
+                    if (queensideRook?.type === 'rook' && !queensideRook.hasMoved && !boardState[row][1] && !boardState[row][2] && !boardState[row][3] && !isSquareAttacked(row, 2, getOpponent(team)) && !isSquareAttacked(row, 3, getOpponent(team))) {
+                        moves.push({ row: row, col: 2, isCastle: true });
+                    }
+                }
+                break;
         }
         return moves;
     }
     
-    function checkGameState() {
-        let whiteKing = null, blackKing = null;
+    // --- FIX: Replaced the recursive isSquareAttacked function ---
+    function isSquareAttacked(row, col, attackerTeam) {
+        // Check for pawn attacks
+        const pawnDir = attackerTeam === TEAMS.W ? 1 : -1;
+        const pawnRow = row + pawnDir;
+        if (pawnRow >= 0 && pawnRow < 8) {
+            const p1 = boardState[pawnRow][col - 1];
+            const p2 = boardState[pawnRow][col + 1];
+            if (p1 && p1.team === attackerTeam && p1.type === 'pawn') return true;
+            if (p2 && p2.team === attackerTeam && p2.type === 'pawn') return true;
+        }
+
+        // Check for knight attacks
+        const knightMoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+        for (const [dr, dc] of knightMoves) {
+            const piece = boardState[row + dr]?.[col + dc];
+            if (piece && piece.team === attackerTeam && piece.type === 'knight') return true;
+        }
+
+        // Check for sliding attacks (Rook, Bishop, Queen)
+        const slidingDirections = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+        for (const [dr, dc] of slidingDirections) {
+            let r = row + dr;
+            let c = col + dc;
+            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                const piece = boardState[r][c];
+                if (piece) {
+                    if (piece.team === attackerTeam) {
+                        const isRook = piece.type === 'rook' || piece.type === 'queen';
+                        const isBishop = piece.type === 'bishop' || piece.type === 'queen';
+                        const isRookDirection = dr === 0 || dc === 0;
+                        const isBishopDirection = dr !== 0 && dc !== 0;
+                        if ((isRook && isRookDirection) || (isBishop && isBishopDirection)) return true;
+                    }
+                    break;
+                }
+                r += dr;
+                c += dc;
+            }
+        }
+
+        // Check for king attacks
+        const kingMoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+        for (const [dr, dc] of kingMoves) {
+            const piece = boardState[row + dr]?.[col + dc];
+            if (piece && piece.team === attackerTeam && piece.type === 'king') return true;
+        }
+
+        return false;
+    }
+
+    function getAllLegalMoves(team) {
+        const allMoves = [];
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const piece = boardState[r][c];
-                if (piece?.type === 'king') {
-                    if (piece.team === TEAMS.W) whiteKing = piece; else blackKing = piece;
+                if (piece && piece.team === team) {
+                    allMoves.push(...getLegalMoves(piece));
                 }
             }
         }
-        if (!whiteKing) endGame("Black Wins! Black is victorious!");
-        else if (!blackKing) endGame("White Wins! White is victorious!");
+        return allMoves;
+    }
+    
+    function checkGameState() {
+        const allMoves = getAllLegalMoves(currentPlayer);
+        const king = findKing(currentPlayer);
+        if (!king) return; // Game already over if king is captured
+        const isInCheck = isSquareAttacked(king.row, king.col, getOpponent(currentPlayer));
+
+        if (allMoves.length === 0) {
+            isGameOver = true;
+            if (isInCheck) {
+                endGame(`Checkmate! ${getOpponent(currentPlayer) === 'white' ? "White" : "Black"} team wins!`);
+            } else {
+                endGame("Stalemate! It's a draw!");
+            }
+        }
     }
 
     function endGame(message) {
+        gameInfoElement.textContent = message;
         gameOverMessage.textContent = message;
         gameOverModal.classList.remove('hidden');
+        isGameOver = true;
+        updateUndoButton();
     }
     
     function resetGame() {
@@ -422,6 +576,22 @@
         renderBoard();
         updatePlayerInfo();
         gameOverModal.classList.add('hidden');
+    }
+    
+    function findKing(team) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = boardState[r][c];
+                if (piece && piece.type === 'king' && piece.team === team) {
+                    return piece;
+                }
+            }
+        }
+        return null;
+    }
+
+    function getOpponent(team) {
+        return team === TEAMS.W ? TEAMS.B : TEAMS.W;
     }
 
     // --- EVENT LISTENERS ---
@@ -437,6 +607,7 @@
     // --- INITIAL GAME START ---
     initializeBoard();
     renderBoard();
+    updatePlayerInfo();
 
 </script>
 </body>
