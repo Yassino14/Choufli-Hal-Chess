@@ -10,14 +10,17 @@
         body {
             font-family: 'Changa', sans-serif;
             color: #4a4a4a;
-            background-image: url(images/cover.png);
+            background-image: url(cover.png);      
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
         .chessboard {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
             grid-template-rows: repeat(8, 1fr);
-            width: 90vw;
-            height: 90vw;
+            width: 40vw;
+            height: 40vw;
             max-width: 640px;
             max-height: 640px;
             border: 10px solid #8b5e34;
@@ -123,9 +126,9 @@
         <source src="music.mp3" type="audio/mpeg">
     </audio>
 
-    <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 text-[#8b5e34]">♟️ Choufli Hal Chess ♟️</h1>
+    <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 text-[#C7C4B9]">♟️ Choufli Hal Chess ♟️</h1>
 
-    <div id="game-info" class="game-info mb-4">White's Turn</div>
+    <div id="game-info" class="game-info mb-4 text-[#C7C4B9]">White's Turn</div>
 
     <div class="chessboard" id="board"></div>
     
