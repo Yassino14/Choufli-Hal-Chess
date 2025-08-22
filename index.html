@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Choufli Hal Chess</title>
     <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>Choufli Hal Chess</title>
-
   <!-- Open Graph (Facebook / WhatsApp / LinkedIn) -->
   <meta property="og:title" content="Choufli Hal Chess">
   <meta property="og:description" content="Play Choufli Hal Chess — a fun themed chess game.">
@@ -187,7 +182,8 @@
     const backgroundMusic = document.getElementById("backgroundMusic");
 
     const images = {
-        Slimane: "images/slimane.jpg", Zeineb: "images/zaineb.jpg", Janet: "images/janet.jpg", "Béji Matrix": "images/beji.jpg", Fadhila: "images/fadhila.png", Douja: "images/douja.jpg", Sboui: "images/sbou3i.jpeg", Fouchika: "images/fouchika.jpg", Azza: "images/azza.png", Amani: "images/amani.jpg", Fatma: "images/fatma.jpg", Dalenda: "images/dalenda.jpeg", Kalthoum: "images/kalthoum.jpg", Chabrouch: "images/chabrouch.png", Taïeb: "images/taieb.jpeg", Houssi: "images/houssi.jpg",
+        Slimane: "images/slimane1.png", Zeineb: "images/zaineb1.png", Janet: "images/janet1.png", "Béji Matrix": "images/beji1.png", Fadhila: "images/fadhila1.png", Douja: "images/douja1.png", Sboui: "images/sbou3i1.png", Fouchika: "images/fouchika1.png", Azza: "images/azza1.png", Amani: "images/amani1.png", Fatma: "images/fatma1.png", Dalenda: "images/dalenda1.png", Kalthoum: "images/kalthoum1.png", Chabrouch: "images/chabrouch1.png", Taïeb: "images/taieb1.png", Houssi: "images/houssi1.png",
+        Slimane2: "images/slimane2.png", Zeineb2: "images/zaineb2.png", Janet2: "images/janet2.png", "Béji Matrix2": "images/beji2.png", Fadhila2: "images/fadhila2.png", Douja2: "images/douja2.png", Sboui2: "images/sbou3i2.png", Fouchika2: "images/fouchika2.png", Azza2: "images/azza2.png", Amani2: "images/amani2.png", Fatma2: "images/fatma2.png", Dalenda2: "images/dalenda2.png", Kalthoum2: "images/kalthoum2.png", Chabrouch2: "images/chabrouch2.png", Taïeb2: "images/taieb2.png", Houssi2: "images/houssi2.png"
     };
 
     const PIECE_TYPES = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight', P: 'pawn' };
@@ -240,7 +236,7 @@
 
     function getPieceName(team, type, row, col) {
         const whitePieces = { king: "Slimane", queen: "Zeineb", rook: ["Janet", "Béji Matrix"], bishop: ["Fadhila", "Douja"], knight: ["Sboui", "Fouchika"], pawn: ["Azza", "Amani", "Fatma", "Dalenda", "Kalthoum", "Chabrouch", "Taïeb", "Houssi"] };
-        const blackPieces = { king: "Slimane", queen: "Zeineb", rook: ["Janet", "Béji Matrix"], bishop: ["Fadhila", "Douja"], knight: ["Sboui", "Fouchika"], pawn: ["Azza", "Amani", "Fatma", "Dalenda", "Kalthoum", "Chabrouch", "Taïeb", "Houssi"] };
+        const blackPieces = { king: "Slimane2", queen: "Zeineb2", rook: ["Janet2", "Béji Matrix2"], bishop: ["Fadhila2", "Douja2"], knight: ["Sboui2", "Fouchika2"], pawn: ["Azza2", "Amani2", "Fatma2", "Dalenda2", "Kalthoum2", "Chabrouch2", "Taïeb2", "Houssi2"] };
         const p = team === TEAMS.W ? whitePieces : blackPieces;
         
         if (type === 'pawn') return p.pawn[col];
